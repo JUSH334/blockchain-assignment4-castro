@@ -1,4 +1,4 @@
-#Short Note - Safety checks/UX touches you added
+# Short Note - Safety checks/UX touches you added
 
 Implementation Notes - Team 08 DApp
 Extra Safety Checks & UX Enhancements
