@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal DApp - ERC20 Token Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .section h2 {
+            color: #555;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .tx-result {
+            background: #e7f5ff;
+            border: 1px solid #74c0fc;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, .3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔗 Minimal DApp</h1>
+
+        <div id="connectionStatus" class="status disconnected">
+            Not Connected
+        </div>
+
+        <!-- Connection Section -->
+        <div class="section">
+            <h2>Wallet Connection</h2>
+            <button id="connectBtn" onclick="connectWallet()">Connect MetaMask</button>
+            <div id="accountInfo" style="display: none;" class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Account:</span>
+                    <span class="info-value" id="accountAddress">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Chain ID:</span>
+                    <span class="info-value" id="chainId">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Configuration Section -->
+        <div class="section">
+            <h2>Token Configuration</h2>
+            <div class="input-group">
+                <label for="tokenAddress">Token Contract Address:</label>
+                <input type="text" id="tokenAddress" placeholder="0x..." />
+            </div>
+            <button onclick="loadToken()">Load Token</button>
+            <div id="tokenInfo" style="display: none;" class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Name:</span>
+                    <span class="info-value" id="tokenName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Symbol:</span>
+                    <span class="info-value" id="tokenSymbol">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Decimals:</span>
+                    <span class="info-value" id="tokenDecimals">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance Section -->
+        <div class="section" id="balanceSection" style="display: none;">
+            <h2>Token Balance</h2>
+            <div class="balance" id="balance">0.0000</div>
+            <div class="button-group">
+                <button onclick="refreshBalance()">🔄 Refresh Balance</button>
+                <button onclick="addTokenToMetaMask()">➕ Add to MetaMask</button>
+            </div>
+        </div>
+
+        <!-- Transfer Section -->
+        <div class="section" id="transferSection" style="display: none;">
+            <h2>Transfer Tokens</h2>
+            <div class="input-group">
+                <label for="recipientAddress">Recipient Address:</label>
+                <input type="text" id="recipientAddress" placeholder="0x..." />
+            </div>
+            <div class="input-group">
+                <label for="transferAmount">Amount:</label>
+                <input type="number" id="transferAmount" placeholder="0.0" step="0.0001" />
+            </div>
+            <button onclick="transferTokens()">Send Transfer</button>
+            <div id="transferResult"></div>
+        </div>
+    </div>
+
+    <!-- Import Viem from CDN -->
+    <script type="module">
+        import {
+            createWalletClient,
+            createPublicClient,
+            custom,
+            http,
+            parseAbi,
+            formatUnits,
+            parseUnits,
+            getAddress,
+            isAddress
+        } from 'https://esm.sh/viem@2.7.1';
+
+        // Team configuration
+        const TEAM_CONFIG = {
+            chainId: 31344,
+            chainName: 'DIDLab Team Chain',
+            rpcUrl: 'https://hh-08.didlab.org', // Your team's RPC URL
+            currencySymbol: 'ETH',
+            currencyDecimals: 18
+        };
+
+        // ERC20 ABI (minimal required functions)
+        const ERC20_ABI = parseAbi([
+            'function name() view returns (string)',
+            'function symbol() view returns (string)',
+            'function decimals() view returns (uint8)',
+            'function balanceOf(address) view returns (uint256)',
+            'function transfer(address to, uint256 amount) returns (bool)',
+            'event Transfer(address indexed from, address indexed to, uint256 value)'
+        ]);
+
+        // Global variables
+        let walletClient = null;
+        let publicClient = null;
+        let account = null;
+        let tokenContract = null;
+        let tokenDecimals = 18;
+
+        // Initialize public client
+        publicClient = createPublicClient({
+            chain: {
+                id: TEAM_CONFIG.chainId,
+                name: TEAM_CONFIG.chainName,
+                network: TEAM_CONFIG.chainName,
+                nativeCurrency: {
+                    name: TEAM_CONFIG.currencySymbol,
+                    symbol: TEAM_CONFIG.currencySymbol,
+                    decimals: TEAM_CONFIG.currencyDecimals,
+                },
+                rpcUrls: {
+                    default: { http: [TEAM_CONFIG.rpcUrl] },
+                    public: { http: [TEAM_CONFIG.rpcUrl] },
+                },
+            },
+            transport: http(TEAM_CONFIG.rpcUrl)
+        });
+
+        // Connect wallet function
+        window.connectWallet = async function () {
+            try {
+                if (!window.ethereum) {
+                    alert('MetaMask is not installed!');
+                    return;
+                }
+
+                // Create wallet client
+                walletClient = createWalletClient({
+                    chain: {
+                        id: TEAM_CONFIG.chainId,
+                        name: TEAM_CONFIG.chainName,
+                        network: TEAM_CONFIG.chainName,
+                        nativeCurrency: {
+                            name: TEAM_CONFIG.currencySymbol,
+                            symbol: TEAM_CONFIG.currencySymbol,
+                            decimals: TEAM_CONFIG.currencyDecimals,
+                        },
+                        rpcUrls: {
+                            default: { http: [TEAM_CONFIG.rpcUrl] },
+                            public: { http: [TEAM_CONFIG.rpcUrl] },
+                        },
+                    },
+                    transport: custom(window.ethereum)
+                });
+
+                // Request accounts
+                const accounts = await walletClient.requestAddresses();
+                account = accounts[0];
+
+                // Add/switch to team chain
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: `0x${TEAM_CONFIG.chainId.toString(16)}` }],
+                    });
+                } catch (switchError) {
+                    // Chain doesn't exist, add it
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: `0x${TEAM_CONFIG.chainId.toString(16)}`,
+                                chainName: TEAM_CONFIG.chainName,
+                                rpcUrls: [TEAM_CONFIG.rpcUrl],
+                                nativeCurrency: {
+                                    name: TEAM_CONFIG.currencySymbol,
+                                    symbol: TEAM_CONFIG.currencySymbol,
+                                    decimals: TEAM_CONFIG.currencyDecimals,
+                                },
+                            }],
+                        });
+                    } else {
+                        throw switchError;
+                    }
+                }
+
+                // Update UI
+                document.getElementById('connectionStatus').className = 'status connected';
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                document.getElementById('accountAddress').textContent =
+                    account.substring(0, 6) + '...' + account.substring(38);
+                document.getElementById('chainId').textContent = TEAM_CONFIG.chainId;
+                document.getElementById('accountInfo').style.display = 'block';
+                document.getElementById('connectBtn').textContent = 'Connected ✓';
+                document.getElementById('connectBtn').disabled = true;
+
+                // Load saved token if exists
+                const savedToken = localStorage.getItem('tokenAddress');
+                if (savedToken) {
+                    document.getElementById('tokenAddress').value = savedToken;
+                    await loadToken();
+                }
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                alert('Failed to connect: ' + error.message);
+            }
+        };
+
+        // Load token function
+        window.loadToken = async function () {
+            try {
+                if (!account) {
+                    alert('Please connect wallet first');
+                    return;
+                }
+
+                const tokenAddress = document.getElementById('tokenAddress').value.trim();
+
+                if (!isAddress(tokenAddress)) {
+                    alert('Invalid token address');
+                    return;
+                }
+
+                // Save token address
+                localStorage.setItem('tokenAddress', tokenAddress);
+                tokenContract = getAddress(tokenAddress);
+
+                // Read token metadata
+                const [name, symbol, decimals] = await Promise.all([
+                    publicClient.readContract({
+                        address: tokenContract,
+                        abi: ERC20_ABI,
+                        functionName: 'name'
+                    }),
+                    publicClient.readContract({
+                        address: tokenContract,
+                        abi: ERC20_ABI,
+                        functionName: 'symbol'
+                    }),
+                    publicClient.readContract({
+                        address: tokenContract,
+                        abi: ERC20_ABI,
+                        functionName: 'decimals'
+                    })
+                ]);
+
+                tokenDecimals = Number(decimals);
+
+                // Update UI
+                document.getElementById('tokenName').textContent = name;
+                document.getElementById('tokenSymbol').textContent = symbol;
+                document.getElementById('tokenDecimals').textContent = tokenDecimals;
+                document.getElementById('tokenInfo').style.display = 'block';
+                document.getElementById('balanceSection').style.display = 'block';
+                document.getElementById('transferSection').style.display = 'block';
+
+                // Load balance
+                await refreshBalance();
+
+                // Set up transfer event listener
+                const unwatch = publicClient.watchContractEvent({
+                    address: tokenContract,
+                    abi: ERC20_ABI,
+                    eventName: 'Transfer',
+                    onLogs: (logs) => {
+                        logs.forEach(log => {
+                            if (log.args.from?.toLowerCase() === account.toLowerCase() ||
+                                log.args.to?.toLowerCase() === account.toLowerCase()) {
+                                refreshBalance();
+                            }
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.error('Token load error:', error);
+                alert('Failed to load token: ' + error.message);
+            }
+        };
+
+        // Refresh balance function
+        window.refreshBalance = async function () {
+            try {
+                if (!account || !tokenContract) return;
+
+                const balance = await publicClient.readContract({
+                    address: tokenContract,
+                    abi: ERC20_ABI,
+                    functionName: 'balanceOf',
+                    args: [account]
+                });
+
+                const formattedBalance = formatUnits(balance, tokenDecimals);
+                const symbol = document.getElementById('tokenSymbol').textContent;
+                document.getElementById('balance').textContent =
+                    `${parseFloat(formattedBalance).toFixed(4)} ${symbol}`;
+
+            } catch (error) {
+                console.error('Balance refresh error:', error);
+                alert('Failed to refresh balance: ' + error.message);
+            }
+        };
+
+        // Transfer tokens function
+        window.transferTokens = async function () {
+            try {
+                const recipient = document.getElementById('recipientAddress').value.trim();
+                const amount = document.getElementById('transferAmount').value;
+
+                if (!isAddress(recipient)) {
+                    alert('Invalid recipient address');
+                    return;
+                }
+
+                if (!amount || parseFloat(amount) <= 0) {
+                    alert('Invalid amount');
+                    return;
+                }
+
+                const amountInWei = parseUnits(amount, tokenDecimals);
+
+                // Clear previous results
+                document.getElementById('transferResult').innerHTML = '';
+
+                // Send transaction
+                const hash = await walletClient.writeContract({
+                    address: tokenContract,
+                    abi: ERC20_ABI,
+                    functionName: 'transfer',
+                    args: [getAddress(recipient), amountInWei],
+                    account: account
+                });
+
+                // Show pending status
+                document.getElementById('transferResult').innerHTML =
+                    `<div class="tx-result">Transaction pending...<br/>Hash: ${hash}</div>`;
+
+                // Wait for receipt
+                const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+                // Calculate gas used
+                const gasUsed = receipt.gasUsed.toString();
+                const effectiveGasPrice = receipt.effectiveGasPrice?.toString() || '0';
+                const totalFee = formatUnits(BigInt(gasUsed) * BigInt(effectiveGasPrice), 18);
+
+                // Update with final result
+                document.getElementById('transferResult').innerHTML = `
+                    <div class="tx-result">
+                        <strong>Transfer Successful!</strong><br/>
+                        <strong>Transaction Hash:</strong> ${hash}<br/>
+                        <strong>Block Number:</strong> ${receipt.blockNumber}<br/>
+                        <strong>Gas Used:</strong> ${gasUsed}<br/>
+                        <strong>Total Fee:</strong> ${totalFee} ${TEAM_CONFIG.currencySymbol}
+                    </div>
+                `;
+
+                // Clear inputs
+                document.getElementById('recipientAddress').value = '';
+                document.getElementById('transferAmount').value = '';
+
+                // Refresh balance
+                await refreshBalance();
+
+            } catch (error) {
+                console.error('Transfer error:', error);
+                document.getElementById('transferResult').innerHTML =
+                    `<div class="error">Transfer failed: ${error.message}</div>`;
+            }
+        };
+
+        // Add token to MetaMask
+        window.addTokenToMetaMask = async function () {
+            try {
+                if (!tokenContract) {
+                    alert('Please load token first');
+                    return;
+                }
+
+                const symbol = document.getElementById('tokenSymbol').textContent;
+
+                const wasAdded = await window.ethereum.request({
+                    method: 'wallet_watchAsset',
+                    params: {
+                        type: 'ERC20',
+                        options: {
+                            address: tokenContract,
+                            symbol: symbol,
+                            decimals: tokenDecimals,
+                        },
+                    },
+                });
+
+                if (wasAdded) {
+                    alert('Token added to MetaMask!');
+                }
+            } catch (error) {
+                console.error('Add token error:', error);
+                alert('Failed to add token: ' + error.message);
+            }
+        };
+
+        // Check if already connected on load
+        window.addEventListener('load', async () => {
+            if (window.ethereum && window.ethereum.selectedAddress) {
+                await connectWallet();
+            }
+        });
+
+        // Listen for account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length === 0) {
+                    // Disconnected
+                    location.reload();
+                } else if (accounts[0] !== account) {
+                    // Account changed
+                    location.reload();
+                }
+            });
+
+            window.ethereum.on('chainChanged', () => {
+                location.reload();
+            });
+        }
+    </script>
+</body>
+
+</html>
